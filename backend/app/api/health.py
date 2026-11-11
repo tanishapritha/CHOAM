@@ -1,4 +1,5 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
@@ -11,11 +12,17 @@ router = APIRouter(tags=["health"])
 
 @router.get("/health")
 async def health() -> dict[str, str]:
-    return {"status": "ok", "service": "CHOAM API", "timestamp": datetime.now(timezone.utc).isoformat()}
+    return {
+        "status": "ok",
+        "service": "CHOAM API",
+        "timestamp": datetime.now(UTC).isoformat(),
+    }
 
 
 @router.get("/ready")
-async def ready(db: AsyncSession = Depends(get_db)) -> dict[str, str]:
+async def ready(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict[str, str]:
     try:
         await db.execute(text("SELECT 1"))
     except Exception as exc:
