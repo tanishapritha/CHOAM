@@ -105,5 +105,9 @@ async def check_purchase_integrity(request_id: str, buyer_access_token: str) -> 
         }
 
 
-if __name__ == "__main__":
+def main() -> None:
     mcp.run(transport="stdio")
+
+
+if __name__ == "__main__":
+    main()

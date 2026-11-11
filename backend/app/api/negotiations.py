@@ -86,25 +86,6 @@ async def list_offers(
     return list(result.scalars().all())
 
 
-@router.get("/{request_id}/audit", response_model=list[AuditEventRead])
-async def list_negotiation_audit_events(
-    request_id: UUID,
-    db: DatabaseSession,
-    buyer_authorization: Annotated[str | None, Header(alias="X-Buyer-Authorization")] = None,
-) -> list[AuditEvent]:
-    request = await db.get(PurchaseRequest, request_id)
-    if request is None:
-        raise HTTPException(status_code=404, detail="Purchase request not found")
-    if not verify_buyer_token(request, buyer_authorization):
-        raise HTTPException(status_code=401, detail="Valid buyer authorization is required")
-    result = await db.execute(
-        select(AuditEvent)
-        .where(AuditEvent.purchase_request_id == request_id)
-        .order_by(AuditEvent.created_at, AuditEvent.id)
-    )
-    return list(result.scalars().all())
-
-
 @router.post(
     "/{request_id}/offers",
     response_model=NegotiationOfferRead,
