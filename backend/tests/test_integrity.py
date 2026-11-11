@@ -15,7 +15,7 @@ def make_request(status="confirmed", currency="INR", missing_fields=None):
     )
 
 
-def make_offer(request_id, *, role="seller", amount=Decimal("1200"), currency="INR",
+def make_offer(request_id, *, role="seller", amount=Decimal(1200), currency="INR",
                status="open", parent_id=None, offer_id=None):
     return SimpleNamespace(
         id=offer_id or uuid4(),

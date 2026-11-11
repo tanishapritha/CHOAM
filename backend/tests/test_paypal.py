@@ -4,7 +4,7 @@ import httpx
 import pytest
 
 from app.core.config import Settings
-from app.services.paypal import PayPalGateway
+from app.services.paypal import PayPalError, PayPalGateway
 
 
 @pytest.mark.asyncio
@@ -23,6 +23,7 @@ async def test_paypal_gateway_creates_order_and_extracts_approval_link():
             201,
             json={
                 "id": "ORDER-123",
+                "status": "CREATED",
                 "links": [{"rel": "approve", "href": "https://sandbox.paypal.test/approve"}],
             },
         )
@@ -34,7 +35,7 @@ async def test_paypal_gateway_creates_order_and_extracts_approval_link():
     result = await gateway.create_order(
         request_id="request-1",
         offer_id="offer-1",
-        amount=Decimal("1250"),
+        amount=Decimal(1250),
         currency="INR",
         idempotency_key="request-key-1",
     )
@@ -47,11 +48,11 @@ async def test_paypal_gateway_creates_order_and_extracts_approval_link():
 @pytest.mark.asyncio
 async def test_paypal_gateway_requires_configured_sandbox_credentials():
     gateway = PayPalGateway(Settings())
-    with pytest.raises(Exception, match="credentials are not configured"):
+    with pytest.raises(PayPalError, match="credentials are not configured"):
         await gateway.create_order(
             request_id="request-1",
             offer_id="offer-1",
-            amount=Decimal("1250"),
+            amount=Decimal(1250),
             currency="INR",
             idempotency_key="request-key-1",
         )

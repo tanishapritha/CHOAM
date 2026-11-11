@@ -1,6 +1,6 @@
+from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Sequence
 from uuid import UUID
 
 from app.models.negotiation_offer import NegotiationOffer
@@ -50,7 +50,7 @@ def evaluate_purchase_integrity(
             issues.append(IntegrityIssue("invalid_proposer_role", "Offer proposer must be buyer or seller"))
         if offer.status not in valid_offer_statuses:
             issues.append(IntegrityIssue("unknown_offer_status", "Offer status is not supported"))
-        if offer.amount is None or offer.amount <= Decimal("0"):
+        if offer.amount is None or offer.amount <= Decimal(0):
             issues.append(IntegrityIssue("invalid_offer_amount", "Offer amount must be greater than zero"))
         if not isinstance(offer.currency, str) or len(offer.currency) != 3 or not offer.currency.isalpha() or offer.currency != offer.currency.upper():
             issues.append(IntegrityIssue("invalid_offer_currency", "Offer currency must be a three-letter uppercase code"))
