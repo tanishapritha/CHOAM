@@ -9,10 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.db.session import get_db
+from app.models.audit_event import AuditEvent
 from app.models.negotiation_offer import NegotiationOffer
 from app.models.payment_attempt import PaymentAttempt
 from app.models.purchase_request import PurchaseRequest
 from app.schemas.payments import PaymentCreate, PaymentRead
+from app.services.audit import record_audit_event
 from app.services.buyer_authorization import verify_buyer_token
 from app.services.paypal import PayPalError, PayPalGateway
 
@@ -91,6 +93,18 @@ async def create_payment(
         approval_url=result["approval_url"],
     )
     db.add(attempt)
+    await db.flush()
+    record_audit_event(
+        db,
+        purchase_request_id=request.id,
+        actor_role="buyer",
+        actor_authenticated=True,
+        action="payment.order_created",
+        entity_type="payment_attempt",
+        entity_id=str(attempt.id),
+        request_version=request.version,
+        details={"amount": str(attempt.amount), "currency": attempt.currency, "status": attempt.status},
+    )
     try:
         await db.commit()
     except IntegrityError as exc:
@@ -144,6 +158,17 @@ async def capture_payment(
     attempt.status = "captured"
     attempt.paypal_capture_id = result["capture_id"]
     attempt.captured_at = datetime.now(UTC)
+    record_audit_event(
+        db,
+        purchase_request_id=request.id,
+        actor_role="buyer",
+        actor_authenticated=True,
+        action="payment.captured",
+        entity_type="payment_attempt",
+        entity_id=str(attempt.id),
+        request_version=request.version,
+        details={"capture_id": attempt.paypal_capture_id, "status": attempt.status},
+    )
     await db.commit()
     await db.refresh(attempt)
     return attempt

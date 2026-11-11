@@ -7,13 +7,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
+from app.models.audit_event import AuditEvent
 from app.models.negotiation_offer import NegotiationOffer
 from app.models.purchase_request import PurchaseRequest
+from app.schemas.audit import AuditEventRead
 from app.schemas.negotiation import (
     NegotiationOfferCreate,
     NegotiationOfferRead,
     NegotiationResponse,
 )
+from app.services.audit import record_audit_event
 from app.services.buyer_authorization import verify_buyer_token
 from app.services.integrity import evaluate_purchase_integrity
 from app.services.negotiation import (
@@ -65,14 +68,39 @@ def _raise_integrity_conflict(issues: list[dict[str, str]]) -> None:
 
 
 @router.get("/{request_id}/offers", response_model=list[NegotiationOfferRead])
-async def list_offers(request_id: UUID, db: DatabaseSession) -> list[NegotiationOffer]:
+async def list_offers(
+    request_id: UUID,
+    db: DatabaseSession,
+    buyer_authorization: Annotated[str | None, Header(alias="X-Buyer-Authorization")] = None,
+) -> list[NegotiationOffer]:
     request = await db.get(PurchaseRequest, request_id)
     if request is None:
         raise HTTPException(status_code=404, detail="Purchase request not found")
+    if not verify_buyer_token(request, buyer_authorization):
+        raise HTTPException(status_code=401, detail="Valid buyer authorization is required")
     result = await db.execute(
         select(NegotiationOffer)
         .where(NegotiationOffer.purchase_request_id == request_id)
         .order_by(NegotiationOffer.created_at, NegotiationOffer.id)
+    )
+    return list(result.scalars().all())
+
+
+@router.get("/{request_id}/audit", response_model=list[AuditEventRead])
+async def list_negotiation_audit_events(
+    request_id: UUID,
+    db: DatabaseSession,
+    buyer_authorization: Annotated[str | None, Header(alias="X-Buyer-Authorization")] = None,
+) -> list[AuditEvent]:
+    request = await db.get(PurchaseRequest, request_id)
+    if request is None:
+        raise HTTPException(status_code=404, detail="Purchase request not found")
+    if not verify_buyer_token(request, buyer_authorization):
+        raise HTTPException(status_code=401, detail="Valid buyer authorization is required")
+    result = await db.execute(
+        select(AuditEvent)
+        .where(AuditEvent.purchase_request_id == request_id)
+        .order_by(AuditEvent.created_at, AuditEvent.id)
     )
     return list(result.scalars().all())
 
@@ -144,6 +172,21 @@ async def create_offer(
         )
 
     db.add(offer)
+    record_audit_event(
+        db,
+        purchase_request_id=request.id,
+        actor_role=payload.actor_role,
+        actor_authenticated=payload.actor_role == "buyer",
+        action="offer.created",
+        entity_type="negotiation_offer",
+        entity_id=str(offer.id),
+        request_version=request.version,
+        details={
+            "amount": str(offer.amount),
+            "currency": offer.currency,
+            "countered_offer_id": str(parent.id) if parent else None,
+        },
+    )
     await db.commit()
     await db.refresh(offer)
     return offer
@@ -192,6 +235,17 @@ async def _respond_to_offer(
             [{"code": issue.code, "message": issue.message} for issue in report.issues]
         )
 
+    record_audit_event(
+        db,
+        purchase_request_id=request.id,
+        actor_role=payload.actor_role,
+        actor_authenticated=payload.actor_role == "buyer",
+        action=f"offer.{decision}",
+        entity_type="negotiation_offer",
+        entity_id=str(offer.id),
+        request_version=request.version,
+        details={"status": offer.status},
+    )
     await db.commit()
     await db.refresh(offer)
     return offer

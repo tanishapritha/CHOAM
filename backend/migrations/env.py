@@ -2,7 +2,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from app.db.base import Base
-from app.models import NegotiationOffer, PaymentAttempt, PurchaseRequest  # noqa: F401
+from app.models import AuditEvent, NegotiationOffer, PaymentAttempt, PurchaseRequest  # noqa: F401
 
 config = context.config
 target_metadata = Base.metadata

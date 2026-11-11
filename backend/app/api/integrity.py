@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +9,7 @@ from app.db.session import get_db
 from app.models.negotiation_offer import NegotiationOffer
 from app.models.purchase_request import PurchaseRequest
 from app.schemas.integrity import IntegrityReportRead
+from app.services.buyer_authorization import verify_buyer_token
 from app.services.integrity import evaluate_purchase_integrity
 
 router = APIRouter(prefix="/purchase-requests", tags=["integrity"])
@@ -16,10 +17,16 @@ DatabaseSession = Annotated[AsyncSession, Depends(get_db)]
 
 
 @router.get("/{request_id}/integrity", response_model=IntegrityReportRead)
-async def get_purchase_integrity(request_id: UUID, db: DatabaseSession) -> IntegrityReportRead:
+async def get_purchase_integrity(
+    request_id: UUID,
+    db: DatabaseSession,
+    buyer_authorization: Annotated[str | None, Header(alias="X-Buyer-Authorization")] = None,
+) -> IntegrityReportRead:
     request = await db.get(PurchaseRequest, request_id)
     if request is None:
         raise HTTPException(status_code=404, detail="Purchase request not found")
+    if not verify_buyer_token(request, buyer_authorization):
+        raise HTTPException(status_code=401, detail="Valid buyer authorization is required")
 
     result = await db.execute(
         select(NegotiationOffer)

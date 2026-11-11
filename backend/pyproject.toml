@@ -6,10 +6,13 @@ build-backend = "setuptools.build_meta"
 name = "choam-backend"
 version = "0.1.0"
 requires-python = ">=3.11"
-dependencies = ["fastapi>=0.115,<1", "uvicorn[standard]>=0.30,<1", "pydantic-settings>=2.5,<3", "sqlalchemy[asyncio]>=2,<3", "asyncpg>=0.29,<1", "alembic>=1.13,<2", "psycopg[binary]>=3.2,<4", "httpx>=0.27,<1"]
+dependencies = ["fastapi>=0.115,<1", "uvicorn[standard]>=0.30,<1", "pydantic-settings>=2.5,<3", "sqlalchemy[asyncio]>=2,<3", "asyncpg>=0.29,<1", "alembic>=1.13,<2", "psycopg[binary]>=3.2,<4", "httpx>=0.27,<1", "mcp>=1.9,<2"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.3,<9", "pytest-asyncio>=0.24,<1", "ruff>=0.6,<1"]
+
+[project.scripts]
+choam-mcp = "app.mcp.server:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
