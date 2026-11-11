@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +14,7 @@ from app.schemas.negotiation import (
     NegotiationOfferRead,
     NegotiationResponse,
 )
+from app.services.buyer_authorization import verify_buyer_token
 from app.services.integrity import evaluate_purchase_integrity
 from app.services.negotiation import (
     NegotiationState,
@@ -47,6 +48,15 @@ def _check_version(request: PurchaseRequest, expected_version: int) -> None:
         raise HTTPException(status_code=409, detail="Purchase request changed; refresh before continuing")
 
 
+def _authorize_actor(
+    request: PurchaseRequest,
+    actor_role: str,
+    buyer_authorization: str | None,
+) -> None:
+    if actor_role == "buyer" and not verify_buyer_token(request, buyer_authorization):
+        raise HTTPException(status_code=401, detail="Valid buyer authorization is required")
+
+
 def _raise_integrity_conflict(issues: list[dict[str, str]]) -> None:
     raise HTTPException(
         status_code=409,
@@ -76,8 +86,10 @@ async def create_offer(
     request_id: UUID,
     payload: NegotiationOfferCreate,
     db: DatabaseSession,
+    buyer_authorization: Annotated[str | None, Header(alias="X-Buyer-Authorization")] = None,
 ) -> NegotiationOffer:
     request = await _locked_request(db, request_id)
+    _authorize_actor(request, payload.actor_role, buyer_authorization)
     _check_version(request, payload.expected_request_version)
     offers = await _request_offers(db, request_id)
 
@@ -143,8 +155,10 @@ async def _respond_to_offer(
     payload: NegotiationResponse,
     db: AsyncSession,
     decision: str,
+    buyer_authorization: str | None,
 ) -> NegotiationOffer:
     request = await _locked_request(db, request_id)
+    _authorize_actor(request, payload.actor_role, buyer_authorization)
     _check_version(request, payload.expected_request_version)
     offers = await _request_offers(db, request_id)
     offer = next((item for item in offers if item.id == offer_id), None)
@@ -189,8 +203,11 @@ async def accept_offer(
     offer_id: UUID,
     payload: NegotiationResponse,
     db: DatabaseSession,
+    buyer_authorization: Annotated[str | None, Header(alias="X-Buyer-Authorization")] = None,
 ) -> NegotiationOffer:
-    return await _respond_to_offer(request_id, offer_id, payload, db, "accepted")
+    return await _respond_to_offer(
+        request_id, offer_id, payload, db, "accepted", buyer_authorization
+    )
 
 
 @router.post("/{request_id}/offers/{offer_id}/reject", response_model=NegotiationOfferRead)
@@ -199,5 +216,8 @@ async def reject_offer(
     offer_id: UUID,
     payload: NegotiationResponse,
     db: DatabaseSession,
+    buyer_authorization: Annotated[str | None, Header(alias="X-Buyer-Authorization")] = None,
 ) -> NegotiationOffer:
-    return await _respond_to_offer(request_id, offer_id, payload, db, "rejected")
+    return await _respond_to_offer(
+        request_id, offer_id, payload, db, "rejected", buyer_authorization
+    )

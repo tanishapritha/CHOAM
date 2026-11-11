@@ -40,6 +40,10 @@ class PurchaseRequestRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class PurchaseRequestCreated(PurchaseRequestRead):
+    buyer_access_token: str
+
+
 class ConfirmPurchaseRequest(BaseModel):
     confirm: bool
     expected_version: int = Field(ge=1)

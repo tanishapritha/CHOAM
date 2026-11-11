@@ -31,6 +31,7 @@ class PurchaseRequest(Base):
     delivery_location: Mapped[str | None] = mapped_column(String(240), nullable=True)
     required_by: Mapped[str | None] = mapped_column(String(10), nullable=True)
     missing_fields: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    buyer_token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft")
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     created_at: Mapped[datetime] = mapped_column(
