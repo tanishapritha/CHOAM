@@ -9,7 +9,7 @@ def test_extracts_explicit_purchase_fields():
     )
     assert result.quantity == 12
     assert result.unit == "cartons"
-    assert result.budget_amount == Decimal("8500")
+    assert result.budget_amount == Decimal(8500)
     assert result.currency == "INR"
     assert result.delivery_location == "Nagpur"
     assert result.required_by == "2026-12-01"

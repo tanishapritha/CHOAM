@@ -13,7 +13,7 @@ MONEY_RE = re.compile(
     r"\b(INR|Rs\.?|₹|USD|\$|EUR|€|GBP|£)\s*([\d,]+(?:\.\d{1,2})?)\b",
     re.IGNORECASE,
 )
-DATE_RE = re.compile(r"\b(?:by|before|needed by)\s+(\d{4}-\d{2}-\d{2})\b", re.I)
+DATE_RE = re.compile(r"\b(?:by|before|needed by)\s+(\d{4}-\d{2}-\d{2})\b", re.IGNORECASE)
 LOCATION_RE = re.compile(
     r"\b(?:deliver|ship|send)\s+(?:it\s+)?to\s+([^,.;]+)", re.IGNORECASE
 )
