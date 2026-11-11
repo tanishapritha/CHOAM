@@ -1,3 +1,3 @@
-from app.db.base import Base
+from app.models.purchase_request import PurchaseRequest
 
-__all__ = ["Base"]
+__all__ = ["PurchaseRequest"]
