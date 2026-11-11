@@ -18,6 +18,8 @@ jobs:
       - run: pip install -e '.[dev]'
       - run: ruff check app tests
       - run: pytest -q
+      - name: Validate Alembic migration chain
+        run: alembic upgrade head --sql > /tmp/choam-migrations.sql
   frontend:
     runs-on: ubuntu-latest
     defaults:

@@ -12,7 +12,16 @@
 - Transactional audit events for request, negotiation, and payment state changes.
 - Read-only MCP server for purchase preview, buyer-authorized request/offer inspection, and integrity checks.
 
-## Local development
+## Run locally with Docker Compose
+
+1. Copy `.env.example` to `.env` in the repository root.
+2. Run `docker compose up --build`.
+3. Open the frontend at `http://localhost:3000`.
+4. Check API liveness at `http://localhost:8000/api/v1/health` and readiness at `http://localhost:8000/api/v1/ready`.
+
+PostgreSQL data is persisted in the `choam-postgres` Docker volume. The backend applies Alembic migrations before starting. PayPal sandbox credentials are optional until you test the payment flow.
+
+## Local development without Docker
 
 Backend: `cd backend && pip install -e '.[dev]' && alembic upgrade head && uvicorn app.main:app --reload`
 
@@ -26,7 +35,7 @@ Install backend dependencies, then run `cd backend && choam-mcp` (or `python -m 
 
 ## PayPal sandbox
 
-Set `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET` in the backend environment. The default API host is PayPal's sandbox endpoint. Never use live credentials in local development.
+Set `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET` in the root `.env` file for Docker Compose, or in the backend environment. The default API host is PayPal's sandbox endpoint. Never use live credentials in local development.
 
 After a request reaches `accepted`, create a payment with `POST /api/v1/purchase-requests/{request_id}/payments`, supplying `X-Buyer-Authorization`, `Idempotency-Key`, and `expected_request_version`. Redirect the buyer to the returned `approval_url`. Once approved in PayPal, call `POST /api/v1/purchase-requests/{request_id}/payments/{payment_id}/capture` with the buyer token and current request version.
 
