@@ -15,7 +15,8 @@ MONEY_RE = re.compile(
 )
 DATE_RE = re.compile(r"\b(?:by|before|needed by)\s+(\d{4}-\d{2}-\d{2})\b", re.IGNORECASE)
 LOCATION_RE = re.compile(
-    r"\b(?:deliver|ship|send)\s+(?:it\s+)?to\s+([^,.;]+)", re.IGNORECASE
+    r"\b(?:deliver|ship|send)\s+(?:it\s+)?to\s+([^,.;]+?)(?=\s+by\s+\d{4}-\d{2}-\d{2}\b|[,.;]|$)",
+    re.IGNORECASE
 )
 FILLER_RE = re.compile(
     r"\b(?:i|we|need|want|please|buy|purchase|order|of|a|an|the|budget|"
