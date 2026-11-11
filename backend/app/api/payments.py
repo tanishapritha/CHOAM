@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 from typing import Annotated
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import select
@@ -40,6 +40,14 @@ async def create_payment(
 ) -> PaymentAttempt:
     if not idempotency_key or not idempotency_key.strip() or len(idempotency_key) > 128:
         raise HTTPException(status_code=400, detail="A valid Idempotency-Key header is required")
+    idempotency_key = idempotency_key.strip()
+
+    request = await _locked_request(db, request_id)
+    if not verify_buyer_token(request, buyer_authorization):
+        raise HTTPException(status_code=401, detail="Valid buyer authorization is required")
+    if request.version != payload.expected_request_version:
+        raise HTTPException(status_code=409, detail="Purchase request changed; refresh before payment")
+
     existing = await db.scalar(
         select(PaymentAttempt).where(PaymentAttempt.idempotency_key == idempotency_key)
     )
@@ -47,12 +55,6 @@ async def create_payment(
         if existing.purchase_request_id != request_id:
             raise HTTPException(status_code=409, detail="Idempotency key was used for another request")
         return existing
-
-    request = await _locked_request(db, request_id)
-    if not verify_buyer_token(request, buyer_authorization):
-        raise HTTPException(status_code=401, detail="Valid buyer authorization is required")
-    if request.version != payload.expected_request_version:
-        raise HTTPException(status_code=409, detail="Purchase request changed; refresh before payment")
     if request.status != "accepted":
         raise HTTPException(status_code=409, detail="Only an accepted purchase request can be paid")
 

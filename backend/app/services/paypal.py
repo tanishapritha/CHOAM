@@ -49,7 +49,10 @@ class PayPalGateway:
             )
         if response.is_error:
             raise PayPalError(f"PayPal API returned HTTP {response.status_code}")
-        payload = response.json()
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise PayPalError("PayPal returned an invalid JSON response") from exc
         if not isinstance(payload, dict):
             raise PayPalError("PayPal returned an unexpected response")
         return payload
@@ -96,8 +99,8 @@ class PayPalGateway:
             },
         )
         order_id = payload.get("id")
-        if not isinstance(order_id, str) or not order_id:
-            raise PayPalError("PayPal order response did not include an order ID")
+        if payload.get("status") != "CREATED" or not isinstance(order_id, str) or not order_id:
+            raise PayPalError("PayPal did not return a newly created order")
         approval_url = None
         links = payload.get("links", [])
         if isinstance(links, list):
@@ -106,6 +109,8 @@ class PayPalGateway:
                     href = link.get("href")
                     approval_url = href if isinstance(href, str) else None
                     break
+        if not approval_url:
+            raise PayPalError("PayPal order response did not include an approval URL")
         return {"order_id": order_id, "approval_url": approval_url}
 
     async def capture_order(self, order_id: str, idempotency_key: str) -> dict[str, str]:
@@ -120,8 +125,8 @@ class PayPalGateway:
         status = payload.get("status")
         captures = []
         for unit in payload.get("purchase_units", []):
-            for capture in unit.get("payments", {}).get("captures", []):
-                captures.append(capture)
+            payments = unit.get("payments") or {}
+            captures.extend(payments.get("captures", []))
         capture_id = captures[0].get("id") if captures else None
         if status != "COMPLETED" or not isinstance(capture_id, str):
             raise PayPalError("PayPal did not confirm a completed capture")
