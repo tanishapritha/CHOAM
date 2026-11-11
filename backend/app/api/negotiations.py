@@ -91,6 +91,13 @@ async def create_offer(
             raise HTTPException(status_code=404, detail="Offer to counter was not found")
         if parent.status != "open":
             raise HTTPException(status_code=409, detail="Only an open offer can be countered")
+    elif any(offer.status == "open" for offer in offers):
+        raise HTTPException(status_code=409, detail="An open offer must be countered or resolved first")
+
+    if offers and payload.currency != offers[0].currency:
+        raise HTTPException(status_code=409, detail="Offer currency must remain consistent")
+    if request.currency and payload.currency != request.currency:
+        raise HTTPException(status_code=409, detail="Offer currency must match the purchase budget currency")
 
     try:
         validate_new_offer(

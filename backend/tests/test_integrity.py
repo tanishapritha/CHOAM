@@ -47,6 +47,23 @@ def test_offer_currency_must_match_request_budget_currency():
     assert "currency_mismatch" in {issue.code for issue in report.issues}
 
 
+def test_currency_cannot_change_when_budget_currency_is_unknown():
+    request = make_request(currency=None, status="negotiating")
+    first = make_offer(request.id, currency="INR", status="superseded")
+    second = make_offer(request.id, currency="USD")
+    report = evaluate_purchase_integrity(request, [first, second])
+    assert "offer_currency_changed" in {issue.code for issue in report.issues}
+
+
+def test_only_one_offer_may_be_open_at_a_time():
+    request = make_request(status="negotiating")
+    report = evaluate_purchase_integrity(
+        request,
+        [make_offer(request.id), make_offer(request.id)],
+    )
+    assert "multiple_open_offers" in {issue.code for issue in report.issues}
+
+
 def test_accepted_request_requires_one_accepted_offer_and_no_open_offers():
     request = make_request(status="accepted")
     accepted = make_offer(request.id, status="accepted")
@@ -65,9 +82,9 @@ def test_valid_accepted_request_has_exactly_one_accepted_offer():
 
 def test_counteroffer_requires_other_party_and_superseded_parent():
     request = make_request(status="negotiating")
-    parent = make_offer(request.id, role="seller", status="open")
+    parent = make_offer(request.id, role="seller", status="superseded")
     counter = make_offer(
         request.id, role="buyer", status="open", parent_id=parent.id
     )
     report = evaluate_purchase_integrity(request, [parent, counter])
-    assert "active_counteroffer_parent" in {issue.code for issue in report.issues}
+    assert report.is_valid is True

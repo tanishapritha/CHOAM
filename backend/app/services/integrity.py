@@ -41,6 +41,7 @@ def evaluate_purchase_integrity(
     offer_by_id = {offer.id: offer for offer in offers}
     accepted_offers: list[NegotiationOffer] = []
     open_offers: list[NegotiationOffer] = []
+    currencies: set[str] = set()
 
     for offer in offers:
         if offer.purchase_request_id != request.id:
@@ -51,14 +52,19 @@ def evaluate_purchase_integrity(
             issues.append(IntegrityIssue("unknown_offer_status", "Offer status is not supported"))
         if offer.amount is None or offer.amount <= Decimal("0"):
             issues.append(IntegrityIssue("invalid_offer_amount", "Offer amount must be greater than zero"))
-        if len(offer.currency) != 3 or not offer.currency.isalpha() or offer.currency != offer.currency.upper():
+        if not isinstance(offer.currency, str) or len(offer.currency) != 3 or not offer.currency.isalpha() or offer.currency != offer.currency.upper():
             issues.append(IntegrityIssue("invalid_offer_currency", "Offer currency must be a three-letter uppercase code"))
+        else:
+            currencies.add(offer.currency)
         if request.currency and offer.currency != request.currency:
             issues.append(IntegrityIssue("currency_mismatch", "Offer currency must match the buyer budget currency"))
         if offer.status == "accepted":
             accepted_offers.append(offer)
         if offer.status == "open":
             open_offers.append(offer)
+
+    if len(currencies) > 1:
+        issues.append(IntegrityIssue("offer_currency_changed", "Currency must remain consistent throughout negotiation"))
 
     for offer in offers:
         if offer.in_reply_to_offer_id is None:
@@ -78,6 +84,8 @@ def evaluate_purchase_integrity(
         issues.append(IntegrityIssue("offers_before_negotiation", "Offers cannot exist before negotiation starts"))
     if request.status == "negotiating" and not offers:
         issues.append(IntegrityIssue("negotiation_without_offers", "Negotiating request must have at least one offer"))
+    if len(open_offers) > 1:
+        issues.append(IntegrityIssue("multiple_open_offers", "Only one offer may be open at a time"))
     if request.status == "accepted" and len(accepted_offers) != 1:
         issues.append(IntegrityIssue("accepted_offer_count", "Accepted request must have exactly one accepted offer"))
     if request.status != "accepted" and accepted_offers:
