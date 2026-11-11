@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, Index, Integer, Numeric, String, Text, func
+from sqlalchemy import CheckConstraint, DateTime, Index, Integer, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -12,7 +12,14 @@ from app.db.base import Base
 
 class PurchaseRequest(Base):
     __tablename__ = "purchase_requests"
-    __table_args__ = (Index("ix_purchase_requests_status", "status"),)
+    __table_args__ = (
+        Index("ix_purchase_requests_status", "status"),
+        CheckConstraint(
+            "status IN ('draft', 'confirmed', 'negotiating', 'accepted')",
+            name="ck_purchase_requests_status",
+        ),
+        CheckConstraint("version >= 1", name="ck_purchase_requests_version_positive"),
+    )
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     raw_text: Mapped[str] = mapped_column(Text, nullable=False)

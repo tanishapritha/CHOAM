@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Index, Numeric, String, Text, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -13,6 +13,19 @@ class NegotiationOffer(Base):
     __tablename__ = "negotiation_offers"
     __table_args__ = (
         Index("ix_negotiation_offers_request_created", "purchase_request_id", "created_at"),
+        CheckConstraint("amount > 0", name="ck_negotiation_offers_amount_positive"),
+        CheckConstraint(
+            "proposer_role IN ('buyer', 'seller')",
+            name="ck_negotiation_offers_proposer_role",
+        ),
+        CheckConstraint(
+            "status IN ('open', 'accepted', 'rejected', 'superseded')",
+            name="ck_negotiation_offers_status",
+        ),
+        CheckConstraint(
+            "currency ~ '^[A-Z]{3}$'",
+            name="ck_negotiation_offers_currency",
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
