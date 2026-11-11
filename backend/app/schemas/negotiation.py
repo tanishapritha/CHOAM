@@ -1,10 +1,9 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
-from typing_extensions import Annotated
 
 Role = Literal["buyer", "seller"]
 Currency = Annotated[str, StringConstraints(pattern=r"^[A-Z]{3}$")]

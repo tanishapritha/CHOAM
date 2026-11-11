@@ -10,21 +10,21 @@ from app.services.negotiation import (
 
 
 def test_initial_offer_requires_confirmed_request():
-    validate_new_offer(NegotiationState("confirmed", 2), "seller", Decimal("1200"), None)
+    validate_new_offer(NegotiationState("confirmed", 2), "seller", Decimal(1200), None)
 
 
 def test_offer_cannot_start_before_buyer_confirmation():
     with pytest.raises(ValueError, match="confirmed"):
-        validate_new_offer(NegotiationState("draft", 1), "seller", Decimal("1200"), None)
+        validate_new_offer(NegotiationState("draft", 1), "seller", Decimal(1200), None)
 
 
 def test_counteroffer_must_come_from_other_party():
     with pytest.raises(ValueError, match="other party"):
-        validate_new_offer(NegotiationState("negotiating", 3), "seller", Decimal("1100"), "seller")
+        validate_new_offer(NegotiationState("negotiating", 3), "seller", Decimal(1100), "seller")
 
 
 def test_counteroffer_from_other_party_is_valid():
-    validate_new_offer(NegotiationState("negotiating", 3), "buyer", Decimal("1000"), "seller")
+    validate_new_offer(NegotiationState("negotiating", 3), "buyer", Decimal(1000), "seller")
 
 
 def test_party_cannot_accept_own_offer():
