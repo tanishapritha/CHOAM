@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/choam"
     cors_origins: list[str] = ["http://localhost:3000"]
     log_level: str = "INFO"
+    paypal_client_id: str | None = None
+    paypal_client_secret: str | None = None
+    paypal_base_url: str = "https://api-m.sandbox.paypal.com"
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
